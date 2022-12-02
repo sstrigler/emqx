@@ -213,6 +213,12 @@ t_log_file(_Config) ->
     Path = api_path("trace/test_client_id/download?node=" ++ atom_to_list(node())),
     {ok, Binary2} = request_api(get, Path, Header),
     ?assertEqual(ZipTab, zip:table(Binary2)),
+    {error, {_, 400, _}, _} =
+        request_api(
+            get,
+            api_path("trace/test_client_id/download?node=lesser_known_atom"),
+            Header
+        ),
     ok = emqtt:disconnect(Client),
     ok.
 
