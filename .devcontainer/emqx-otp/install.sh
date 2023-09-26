@@ -11,7 +11,6 @@ source ./library_scripts.sh
 # of the script
 ensure_nanolayer nanolayer_location "v0.4.45"
 
-
 $nanolayer_location \
     install \
     devcontainer-feature \
@@ -20,13 +19,12 @@ $nanolayer_location \
 
 KERL_BUILD_BACKEND=git
 OTP_GITHUB_URL='https://github.com/emqx/otp'
+version=`cat ../../.tool-versions | grep  erlang | awk '{print $2}'`
 
 $nanolayer_location \
     install \
     devcontainer-feature \
     "ghcr.io/devcontainers-contrib/features/asdf-package:1.0.8" \
-    --option plugin='erlang'
-
-
+    --option plugin='erlang' --option version="$version"
 
 echo 'Done!'

@@ -1,8 +1,8 @@
 {
     "id": "emqx-otp",
     "version": "1.0.0",
-    "name": "Erlang (via asdf)",
-    "documentationURL": "http://github.com/devcontainers-contrib/features/tree/main/src/erlang-asdf",
+    "name": "EMQX Erlang OTP (via asdf)",
+    "documentationURL": "http://github.com/emqx/otp",
     "description": "Erlang is a general-purpose, concurrent, functional programming language, and a garbage-collected runtime system.",
     "options": {
         "version": {
