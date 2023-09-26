@@ -26,6 +26,6 @@ $nanolayer_location \
     install \
     devcontainer-feature \
     "ghcr.io/devcontainers-contrib/features/asdf-package:1.0.8" \
-    --option plugin='erlang' --option version="$VERSION" --option pluginRepo="https://github.com/emqx/otp"
+    --option plugin='erlang' --option version="$VERSION" --option OTP_GITHUB_URL="https://github.com/emqx/otp"
 
 echo 'Done!'

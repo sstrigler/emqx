@@ -1,14 +1,14 @@
 {
     "image": "mcr.microsoft.com/devcontainers/universal:2",
     "features": {
+        "./emqx-otp": {
+            "version": "25.3.2-2"
+        },
         "ghcr.io/devcontainers-contrib/features/asdf-package:1": {
             "plugin": "elixir",
             "version": "1.14.5-otp-25"
-        },
-        "./emqx-otp": {
-            "version": "25.3.2-2"
         }
-	},
+    },
 	"customizations": {
 		"vscode": {
 			"extensions": [
