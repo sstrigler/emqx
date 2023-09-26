@@ -17,15 +17,10 @@ $nanolayer_location \
     "ghcr.io/devcontainers-contrib/features/apt-get-packages:1.0.4" \
     --option packages='build-essential,autoconf,m4,libncurses5-dev,libwxgtk3.0-gtk3-dev,libwxgtk-webview3.0-gtk3-dev,libgl1-mesa-dev,libglu1-mesa-dev,libpng-dev,libssh-dev,unixodbc-dev,xsltproc,fop,libxml2-utils,libncurses-dev,openjdk-11-jdk,procps'
 
-export KERL_BUILD_BACKEND=git
-export OTP_GITHUB_URL='https://github.com/emqx/otp'
-#version=`cat ../../.tool-versions | grep  erlang | awk '{print $2}'`
-#echo "found erlang version: $version"
-
 $nanolayer_location \
     install \
     devcontainer-feature \
-    "ghcr.io/devcontainers-contrib/features/asdf-package:1.0.8" \
-    --option plugin='erlang' --option version="$VERSION" --option OTP_GITHUB_URL="https://github.com/emqx/otp"
+    "./eqmx-asdf-package:1.0.8" \
+    --option plugin='erlang' --option version="$VERSION" --option otp_github_url="https://github.com/emqx/otp"
 
 echo 'Done!'

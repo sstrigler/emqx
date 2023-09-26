@@ -1,0 +1,46 @@
+{
+    "name": "asdf package",
+    "id": "asdf-package",
+    "version": "1.0.8",
+    "description": "Installs an asdf package.",
+    "documentationURL": "http://github.com/devcontainers-contrib/features/tree/main/src/asdf-package",
+    "installsAfter": [
+        "ghcr.io/devcontainers-contrib/features/apt-get-packages"
+    ],
+    "options": {
+        "plugin": {
+            "type": "string",
+            "proposals": [
+                "act",
+                "nomad"
+            ],
+            "default": "",
+            "description": "Select the asdf plugin to install."
+        },
+        "version": {
+            "type": "string",
+            "proposals": [
+                "latest"
+            ],
+            "default": "latest",
+            "description": "Select the version of the asdf plugin to install."
+        },
+        "pluginRepo": {
+            "type": "string",
+            "proposals": [
+                "https://github.com/grimoh/asdf-act.git",
+                "https://github.com/asdf-community/asdf-hashicorp.git"
+            ],
+            "default": "",
+            "description": "Select the asdf plugin repo to install (can remain empty in order to use the plugin short-name index https://github.com/asdf-vm/asdf-plugins)"
+        },
+        "latestVersionPattern": {
+            "type": "string",
+            "proposals": [
+                "[0-9]"
+            ],
+            "default": "",
+            "description": "this will be used as argument for 'asdf latest <plugin> <latestVersionPattern>' command. If none given the default asdf of '[0-9]' will be used."
+        }
+    }
+}
