@@ -1,6 +1,7 @@
 {
     "image": "mcr.microsoft.com/devcontainers/universal:2",
     "features": {
+	"ghcr.io/devcontainers-contrib/features/erlang-asdf:2": { "version": "25.3.2" }
         "./emqx-otp": {
             "version": "25.3.2-2"
         },
