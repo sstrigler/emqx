@@ -20,7 +20,7 @@ $nanolayer_location \
 $nanolayer_location \
     install \
     devcontainer-feature \
-    "ghcr.io/sstrigler/devcontainers-features/asdf-package:1.0.8" \
-    --option plugin='erlang' --option version="$VERSION" --option otp_github_url="https://github.com/emqx/otp"
+    "ghcr.io/sstrigler/devcontainers-features/asdf-package:1.0.8-1" \
+    --option plugin='erlang' --option version="$VERSION" --option otp_github_url='https://github.com/emqx/otp'
 
 echo 'Done!'
