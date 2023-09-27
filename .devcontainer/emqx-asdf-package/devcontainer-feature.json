@@ -41,6 +41,14 @@
             ],
             "default": "",
             "description": "this will be used as argument for 'asdf latest <plugin> <latestVersionPattern>' command. If none given the default asdf of '[0-9]' will be used."
-        }
+        },
+        "otp_github_repo": {
+            "type": "string",
+            "proposals": [
+                "https://github.com/foo/bar"
+            ],
+            "default": "",
+            "description": "Select the got repo to install erlang otp from"
+        },
     }
 }
