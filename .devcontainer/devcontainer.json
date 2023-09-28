@@ -1,8 +1,8 @@
 {
     "image": "mcr.microsoft.com/devcontainers/universal:2",
     "features": {
-        "ghcr.io/devcontainers-contrib/features/erlang-asdf:2": { "version": "25.3.2" },
-	"ghcr.io/devcontainers/features/sshd:1": {},
+        "ghcr.io/devcontainers/features/common-utils:2": {},
+        "ghcr.io/devcontainers/features/sshd:1": {},
         "./emqx-otp": {
             "version": "25.3.2-2"
         },
@@ -11,12 +11,13 @@
             "version": "1.14.5-otp-25"
         }
     },
-	"customizations": {
-		"vscode": {
-			"extensions": [
-				"erlang-ls.erlang-ls",
-				"pgourlain.erlang"
-			]
-		}
-	}
+    "forwardPorts": [2222, 18083],
+	  "customizations": {
+		    "vscode": {
+			      "extensions": [
+				        "erlang-ls.erlang-ls",
+				        "pgourlain.erlang"
+			      ]
+		    }
+	  }
 }
