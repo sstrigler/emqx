@@ -8,6 +8,9 @@ on:
       ref:
         required: false
 
+permissions:
+  contents: read
+
 jobs:
   analyze:
     name: Analyze
@@ -15,10 +18,9 @@ jobs:
     timeout-minutes: 360
     permissions:
       actions: read
-      contents: read
       security-events: write
     container:
-      image: ghcr.io/emqx/emqx-builder/5.1-4:1.14.5-25.3.2-2-ubuntu22.04
+      image: ghcr.io/emqx/emqx-builder/5.2-3:1.14.5-25.3.2-2-ubuntu22.04
 
     strategy:
       fail-fast: false

@@ -1,5 +1,17 @@
 %%--------------------------------------------------------------------
 %% Copyright (c) 2023 EMQ Technologies Co., Ltd. All Rights Reserved.
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
 %%--------------------------------------------------------------------
 
 -module(emqx_ldap_bind_worker).
@@ -58,14 +70,12 @@ on_stop(InstId, _State) ->
 
 on_query(
     InstId,
-    {bind, Data},
+    {bind, DN, Data},
     #{
-        base_tokens := DNTks,
-        bind_password_tokens := PWTks,
+        bind_password := PWTks,
         bind_pool_name := PoolName
     } = State
 ) ->
-    DN = emqx_placeholder:proc_tmpl(DNTks, Data),
     Password = emqx_placeholder:proc_tmpl(PWTks, Data),
 
     LogMeta = #{connector => InstId, state => State},
@@ -82,11 +92,13 @@ on_query(
                 ldap_connector_query_return,
                 #{result => ok}
             ),
-            ok;
+            {ok, #{result => ok}};
+        {error, 'invalidCredentials'} ->
+            {ok, #{result => 'invalidCredentials'}};
         {error, Reason} ->
             ?SLOG(
                 error,
-                LogMeta#{msg => "ldap_bind_failed", reason => Reason}
+                LogMeta#{msg => "ldap_bind_failed", reason => emqx_utils:redact(Reason)}
             ),
             {error, {unrecoverable_error, Reason}}
     end.
@@ -100,7 +112,9 @@ prepare_template(Config, State) ->
     do_prepare_template(maps:to_list(maps:with([bind_password], Config)), State).
 
 do_prepare_template([{bind_password, V} | T], State) ->
-    do_prepare_template(T, State#{bind_password_tokens => emqx_placeholder:preproc_tmpl(V)});
+    %% This is sensitive data
+    %% to reduce match cases, here we reuse the existing sensitive filter key: bind_password
+    do_prepare_template(T, State#{bind_password => emqx_placeholder:preproc_tmpl(V)});
 do_prepare_template([], State) ->
     State.
 

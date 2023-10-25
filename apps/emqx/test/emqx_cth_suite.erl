@@ -52,7 +52,7 @@
 %%    (e.g. in `init_per_suite/1` / `init_per_group/2`), providing the appspecs
 %%    and unique work dir for the testrun (e.g. `work_dir/1`). Save the result
 %%    in a context.
-%% 3. Call `emqx_cth_sutie:stop/1` to stop the applications after the testrun
+%% 3. Call `emqx_cth_suite:stop/1` to stop the applications after the testrun
 %%    finishes (e.g. in `end_per_suite/1` / `end_per_group/2`), providing the
 %%    result from step 2.
 -module(emqx_cth_suite).
@@ -245,6 +245,9 @@ spec_fmt(ffun, {_, X}) -> X.
 
 maybe_configure_app(_App, #{config := false}) ->
     ok;
+maybe_configure_app(_App, AppConfig = #{schema_mod := SchemaModule}) when is_atom(SchemaModule) ->
+    #{config := Config} = AppConfig,
+    configure_app(SchemaModule, Config);
 maybe_configure_app(App, #{config := Config}) ->
     case app_schema(App) of
         {ok, SchemaModule} ->
@@ -327,7 +330,7 @@ default_appspec(emqx, SuiteOpts) ->
         % overwrite everything with a default configuration.
         before_start => fun inhibit_config_loader/2
     };
-default_appspec(emqx_authz, _SuiteOpts) ->
+default_appspec(emqx_auth, _SuiteOpts) ->
     #{
         config => #{
             % NOTE
@@ -353,15 +356,21 @@ default_appspec(emqx_conf, SuiteOpts) ->
         Config,
         [
             emqx,
-            emqx_authz
+            emqx_auth
         ]
     ),
     #{
         config => SharedConfig,
-        % NOTE
-        % We inform `emqx` of our config loader before starting `emqx_conf` so that it won't
-        % overwrite everything with a default configuration.
-        before_start => fun inhibit_config_loader/2
+        before_start => fun(App, Conf) ->
+            % NOTE
+            % We inform `emqx` of our config loader before starting `emqx_conf` so that it won't
+            % overwrite everything with a default configuration.
+            ok = inhibit_config_loader(App, Conf),
+            % NOTE
+            % This should be done to pass authz schema validations.
+            % In production, acl.conf file is created by the release process.
+            ok = emqx_common_test_helpers:copy_acl_conf()
+        end
     };
 default_appspec(emqx_dashboard, _SuiteOpts) ->
     #{

@@ -7,9 +7,12 @@ concurrency:
 on:
   workflow_call:
     inputs:
-      runner:
+      runner_labels:
         required: true
         type: string
+
+permissions:
+  contents: read
 
 jobs:
   spellcheck:
@@ -18,7 +21,7 @@ jobs:
         profile:
         - emqx
         - emqx-enterprise
-    runs-on: ${{ inputs.runner }}
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
     steps:
       - uses: actions/download-artifact@v3
         with:

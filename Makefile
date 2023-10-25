@@ -3,7 +3,7 @@ BUILD = $(CURDIR)/build
 SCRIPTS = $(CURDIR)/scripts
 export EMQX_RELUP ?= true
 export EMQX_DEFAULT_BUILDER = ghcr.io/emqx/emqx-builder/5.1-4:1.14.5-25.3.2-2-debian11
-export EMQX_DEFAULT_RUNNER = debian:11-slim
+export EMQX_DEFAULT_RUNNER = public.ecr.aws/debian/debian:11-slim
 export EMQX_REL_FORM ?= tgz
 export QUICER_DOWNLOAD_FROM_RELEASE = 1
 ifeq ($(OS),Windows_NT)
@@ -15,8 +15,8 @@ endif
 
 # Dashboard version
 # from https://github.com/emqx/emqx-dashboard5
-export EMQX_DASHBOARD_VERSION ?= v1.4.1
-export EMQX_EE_DASHBOARD_VERSION ?= e1.2.1
+export EMQX_DASHBOARD_VERSION ?= v1.5.0
+export EMQX_EE_DASHBOARD_VERSION ?= e1.3.0
 
 # `:=` should be used here, otherwise the `$(shell ...)` will be executed every time when the variable is used
 # In make 4.4+, for backward-compatibility the value from the original environment is used.
@@ -75,7 +75,7 @@ mix-deps-get: $(ELIXIR_COMMON_DEPS)
 
 .PHONY: eunit
 eunit: $(REBAR) merge-config
-	@ENABLE_COVER_COMPILE=1 $(REBAR) eunit -v -c --cover_export_name $(CT_COVER_EXPORT_PREFIX)-eunit
+	@ENABLE_COVER_COMPILE=1 $(REBAR) eunit  --name eunit@127.0.0.1 -v -c --cover_export_name $(CT_COVER_EXPORT_PREFIX)-eunit
 
 .PHONY: proper
 proper: $(REBAR)
@@ -296,7 +296,7 @@ $(foreach tt,$(ALL_ELIXIR_TGZS),$(eval $(call gen-elixir-tgz-target,$(tt))))
 
 .PHONY: fmt
 fmt: $(REBAR)
-	@$(SCRIPTS)/erlfmt -w '{apps,lib-ee}/*/{src,include,priv,test,integration_test}/**/*.{erl,hrl,app.src,eterm}'
+	@$(SCRIPTS)/erlfmt -w 'apps/*/{src,include,priv,test,integration_test}/**/*.{erl,hrl,app.src,eterm}'
 	@$(SCRIPTS)/erlfmt -w 'rebar.config.erl'
 	@mix format
 

@@ -145,8 +145,8 @@ run_command(Cmd, Args) when is_atom(Cmd) ->
 
     audit_log(
         audit_level(Result, Duration),
-        "from_cli",
-        #{duration_ms => Duration, result => Result, cmd => Cmd, args => Args, node => node()}
+        cli,
+        #{duration_ms => Duration, cmd => Cmd, args => Args, node => node()}
     ),
     Result.
 
@@ -337,7 +337,7 @@ audit_log(Level, From, Log) ->
             ignore;
         {ok, {Mod, Fun}} ->
             try
-                apply(Mod, Fun, [Level, From, Log])
+                apply(Mod, Fun, [Level, From, normalize_audit_log_args(Log)])
             catch
                 _:Reason:Stacktrace ->
                     ?LOG_ERROR(#{
@@ -348,13 +348,17 @@ audit_log(Level, From, Log) ->
             end
     end.
 
--define(TOO_SLOW, 3000).
-
-audit_level(ok, Duration) when Duration >= ?TOO_SLOW -> warning;
-audit_level({ok, _}, Duration) when Duration >= ?TOO_SLOW -> warning;
 audit_level(ok, _Duration) -> info;
 audit_level({ok, _}, _Duration) -> info;
 audit_level(_, _) -> error.
+
+normalize_audit_log_args(Log = #{args := [Parsed | _] = Exprs, cmd := eval_erl}) when
+    is_tuple(Parsed)
+->
+    String = erl_pp:exprs(Exprs, [{linewidth, 10000}]),
+    Log#{args => [unicode:characters_to_binary(String)]};
+normalize_audit_log_args(Log = #{args := Args}) ->
+    Log#{args => [unicode:characters_to_binary(A) || A <- Args]}.
 
 eval_erl([Parsed | _] = Expr) when is_tuple(Parsed) ->
     eval_expr(Expr);

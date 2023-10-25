@@ -16,7 +16,7 @@
 
 -module(emqx_conf_cli).
 -include("emqx_conf.hrl").
--include_lib("emqx_authn/include/emqx_authentication.hrl").
+-include_lib("emqx_auth/include/emqx_authn_chains.hrl").
 -include_lib("emqx/include/logger.hrl").
 
 -export([
@@ -108,7 +108,17 @@ admins(_) ->
     emqx_ctl:usage(usage_sync()).
 
 audit(Level, From, Log) ->
-    ?AUDIT(Level, From, Log#{time => logger:timestamp()}).
+    Log1 = redact(Log#{time => logger:timestamp()}),
+    ?AUDIT(Level, From, Log1).
+
+redact(Logs = #{cmd := admins, args := ["add", Username, _Password | Rest]}) ->
+    Logs#{args => ["add", Username, "******" | Rest]};
+redact(Logs = #{cmd := admins, args := ["passwd", Username, _Password]}) ->
+    Logs#{args => ["passwd", Username, "******"]};
+redact(Logs = #{cmd := license, args := ["update", _License]}) ->
+    Logs#{args => ["update", "******"]};
+redact(Logs) ->
+    Logs.
 
 usage_conf() ->
     [

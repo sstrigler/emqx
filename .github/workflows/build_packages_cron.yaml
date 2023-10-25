@@ -12,7 +12,7 @@ on:
 jobs:
   linux:
     if: github.repository_owner == 'emqx'
-    runs-on: aws-${{ matrix.arch }}
+    runs-on: ['self-hosted', 'ephemeral', 'linux', "${{ matrix.arch }}"]
     container:
       image: "ghcr.io/emqx/emqx-builder/${{ matrix.builder }}:${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.os }}"
 
@@ -26,13 +26,13 @@ jobs:
         otp:
           - 25.3.2-2
         arch:
-          - amd64
+          - x64
         os:
           - debian10
           - ubuntu22.04
           - amzn2023
         builder:
-          - 5.1-4
+          - 5.2-3
         elixir:
           - 1.14.5
 
@@ -41,7 +41,6 @@ jobs:
         shell: bash
 
     steps:
-      - uses: emqx/self-hosted-cleanup-action@v1.0.3
       - uses: actions/checkout@v3
         with:
           ref: ${{ matrix.profile[1] }}
@@ -105,7 +104,6 @@ jobs:
           - macos-12-arm64
 
     steps:
-      - uses: emqx/self-hosted-cleanup-action@v1.0.3
       - uses: actions/checkout@v3
         with:
           ref: ${{ matrix.branch }}

@@ -55,8 +55,8 @@ defmodule EMQXUmbrella.MixProject do
       {:cowboy, github: "emqx/cowboy", tag: "2.9.2", override: true},
       {:esockd, github: "emqx/esockd", tag: "5.9.7", override: true},
       {:rocksdb, github: "emqx/erlang-rocksdb", tag: "1.8.0-emqx-1", override: true},
-      {:ekka, github: "emqx/ekka", tag: "0.15.15", override: true},
-      {:gen_rpc, github: "emqx/gen_rpc", tag: "3.1.1", override: true},
+      {:ekka, github: "emqx/ekka", tag: "0.15.16", override: true},
+      {:gen_rpc, github: "emqx/gen_rpc", tag: "3.2.0", override: true},
       {:grpc, github: "emqx/grpc-erl", tag: "0.6.8", override: true},
       {:minirest, github: "emqx/minirest", tag: "1.3.13", override: true},
       {:ecpool, github: "emqx/ecpool", tag: "0.5.4", override: true},
@@ -169,24 +169,10 @@ defmodule EMQXUmbrella.MixProject do
   end
 
   defp enterprise_apps(_profile_info = %{edition_type: :enterprise}) do
-    umbrella_apps =
-      Enum.map(enterprise_umbrella_apps(), fn app_name ->
-        path = "apps/#{app_name}"
-        {app_name, path: path, manager: :rebar3, override: true}
-      end)
-
-    "lib-ee/*"
-    |> Path.wildcard()
-    |> Enum.filter(&File.dir?/1)
-    |> Enum.map(fn path ->
-      app =
-        path
-        |> Path.basename()
-        |> String.to_atom()
-
-      {app, path: path, manager: :rebar3, override: true}
+    Enum.map(enterprise_umbrella_apps(), fn app_name ->
+      path = "apps/#{app_name}"
+      {app_name, path: path, manager: :rebar3, override: true}
     end)
-    |> Enum.concat(umbrella_apps)
   end
 
   defp enterprise_apps(_profile_info) do
@@ -220,12 +206,12 @@ defmodule EMQXUmbrella.MixProject do
       :emqx_bridge_rabbitmq,
       :emqx_bridge_clickhouse,
       :emqx_ft,
+      :emqx_license,
       :emqx_s3,
       :emqx_schema_registry,
       :emqx_enterprise,
       :emqx_bridge_kinesis,
       :emqx_bridge_azure_event_hub,
-      :emqx_ldap,
       :emqx_gcp_device,
       :emqx_dashboard_rbac,
       :emqx_dashboard_sso
@@ -534,12 +520,12 @@ defmodule EMQXUmbrella.MixProject do
     )
 
     Mix.Generator.copy_file(
-      "apps/emqx_authz/etc/acl.conf",
+      "apps/emqx_auth/etc/acl.conf",
       Path.join(etc, "acl.conf"),
       force: overwrite?
     )
 
-    # required by emqx_authz
+    # required by emqx_auth
     File.cp_r!(
       "apps/emqx/etc/certs",
       Path.join(etc, "certs")
@@ -835,7 +821,7 @@ defmodule EMQXUmbrella.MixProject do
   defp quicer_dep() do
     if enable_quicer?(),
       # in conflict with emqx and emqtt
-      do: [{:quicer, github: "emqx/quic", tag: "0.0.200", override: true}],
+      do: [{:quicer, github: "emqx/quic", tag: "0.0.202", override: true}],
       else: []
   end
 

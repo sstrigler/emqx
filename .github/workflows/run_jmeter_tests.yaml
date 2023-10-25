@@ -3,13 +3,16 @@ name: JMeter integration tests
 on:
   workflow_call:
     inputs:
+      runner_labels:
+        required: true
+        type: string
       version-emqx:
         required: true
         type: string
 
 jobs:
   jmeter_artifact:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
     steps:
     - name: Cache Jmeter
       id: cache-jmeter
@@ -38,7 +41,7 @@ jobs:
         path: /tmp/apache-jmeter.tgz
 
   advanced_feat:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
 
     strategy:
       fail-fast: false
@@ -89,7 +92,7 @@ jobs:
         path: ./jmeter_logs
 
   pgsql_authn_authz:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
 
     strategy:
       fail-fast: false
@@ -132,7 +135,7 @@ jobs:
           -Dpgsql_user="root" \
           -Dpgsql_pwd="public" \
           -Ddbname="mqtt" \
-          -Droute="apps/emqx_authn/test/data/certs" \
+          -Droute="apps/emqx_auth/test/data/certs" \
           -Dca_name="ca.crt" \
           -Dkey_name="client.key" \
           -Dcert_name="client.crt" \
@@ -155,7 +158,7 @@ jobs:
         path: ./jmeter_logs
 
   mysql_authn_authz:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
 
     strategy:
       fail-fast: false
@@ -195,7 +198,7 @@ jobs:
           -Dmysql_user="root" \
           -Dmysql_pwd="public" \
           -Ddbname="mqtt" \
-          -Droute="apps/emqx_authn/test/data/certs" \
+          -Droute="apps/emqx_auth/test/data/certs" \
           -Dca_name="ca.crt" \
           -Dkey_name="client.key" \
           -Dcert_name="client.crt" \
@@ -214,7 +217,7 @@ jobs:
         path: ./jmeter_logs
 
   JWT_authn:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
 
     strategy:
       fail-fast: false
@@ -241,7 +244,7 @@ jobs:
         cd scripts/jwks-server
         mvn package
         cd target
-        docker run --name jwks_server --network emqx_bridge --ip 172.100.239.88 -d -v $(pwd)/jwkserver-0.0.1.jar:/jwks_server/jwkserver-0.0.1.jar --workdir /jwks_server openjdk:8-jdk bash \
+        docker run --name jwks_server --network emqx_bridge --ip 172.100.239.88 -d -v $(pwd)/jwkserver-0.0.1.jar:/jwks_server/jwkserver-0.0.1.jar --workdir /jwks_server public.ecr.aws/amazoncorretto/amazoncorretto:8 bash \
         -c "java -jar jwkserver-0.0.1.jar"
     - name: run jmeter
       run: |
@@ -265,7 +268,7 @@ jobs:
         path: ./jmeter_logs
 
   built_in_database_authn_authz:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
 
     strategy:
       fail-fast: false

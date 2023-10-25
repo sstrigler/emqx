@@ -16,17 +16,17 @@ env:
 
 jobs:
   sanity-checks:
-    runs-on: ${{ github.repository_owner == 'emqx' && 'aws-amd64' || 'ubuntu-22.04' }}
-    container: "ghcr.io/emqx/emqx-builder/5.1-4:1.14.5-25.3.2-2-ubuntu22.04"
+    runs-on: ${{ fromJSON(github.repository_owner == 'emqx' && '["self-hosted","ephemeral","linux","x64"]' || '["ubuntu-22.04"]') }}
+    container: "ghcr.io/emqx/emqx-builder/5.2-3:1.14.5-25.3.2-2-ubuntu22.04"
     outputs:
       ct-matrix: ${{ steps.matrix.outputs.ct-matrix }}
       ct-host: ${{ steps.matrix.outputs.ct-host }}
       ct-docker: ${{ steps.matrix.outputs.ct-docker }}
       version-emqx: ${{ steps.matrix.outputs.version-emqx }}
       version-emqx-enterprise: ${{ steps.matrix.outputs.version-emqx-enterprise }}
-      runner: ${{ github.repository_owner == 'emqx' && 'aws-amd64' || 'ubuntu-22.04' }}
-      builder: "ghcr.io/emqx/emqx-builder/5.1-4:1.14.5-25.3.2-2-ubuntu22.04"
-      builder_vsn: "5.1-4"
+      runner_labels: ${{ github.repository_owner == 'emqx' && '["self-hosted","ephemeral","linux","x64"]' || '["ubuntu-22.04"]' }}
+      builder: "ghcr.io/emqx/emqx-builder/5.2-3:1.14.5-25.3.2-2-ubuntu22.04"
+      builder_vsn: "5.2-3"
       otp_vsn: "25.3.2-2"
       elixir_vsn: "1.14.5"
 
@@ -57,8 +57,8 @@ jobs:
         env:
           ACTIONLINT_VSN: 1.6.25
         run: |
-          wget https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VSN}/actionlint_${ACTIONLINT_VSN}_linux_amd64.tar.gz
-          tar zxf actionlint_${ACTIONLINT_VSN}_linux_amd64.tar.gz actionlint
+          wget -q https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VSN}/actionlint_${ACTIONLINT_VSN}_linux_$(dpkg --print-architecture).tar.gz -O actionlint.tar.gz
+          tar zxf actionlint.tar.gz actionlint
           # TODO: enable shellcheck when all the current issues are fixed
           ./actionlint -color \
             -shellcheck= \
@@ -93,12 +93,12 @@ jobs:
           MATRIX="$(echo "${APPS}" | jq -c '
             [
               (.[] | select(.profile == "emqx") | . + {
-                builder: "5.1-4",
+                builder: "5.2-3",
                 otp: "25.3.2-2",
                 elixir: "1.14.5"
               }),
               (.[] | select(.profile == "emqx-enterprise") | . + {
-                builder: "5.1-4",
+                builder: "5.2-3",
                 otp: ["25.3.2-2"][],
                 elixir: "1.14.5"
               })
@@ -115,7 +115,7 @@ jobs:
           echo "version-emqx-enterprise=$(./pkg-vsn.sh emqx-enterprise)" | tee -a $GITHUB_OUTPUT
 
   compile:
-    runs-on: ${{ needs.sanity-checks.outputs.runner }}
+    runs-on: ${{ fromJSON(needs.sanity-checks.outputs.runner_labels) }}
     container: ${{ needs.sanity-checks.outputs.builder }}
     needs:
       - sanity-checks
@@ -138,9 +138,10 @@ jobs:
           ENABLE_COVER_COMPILE: 1
         run: |
           make ensure-rebar3
-          make ${PROFILE}
-          make test-compile
-          zip -ryq $PROFILE.zip .
+          make ${PROFILE}-compile test-compile
+          echo "PROFILE=${PROFILE}" | tee -a .env
+          echo "PKG_VSN=$(./pkg-vsn.sh ${PROFILE})" | tee -a .env
+          zip -ryq -x@.github/workflows/.zipignore $PROFILE.zip .
       - uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.profile }}
@@ -153,7 +154,7 @@ jobs:
       - compile
     uses: ./.github/workflows/run_emqx_app_tests.yaml
     with:
-      runner: ${{ needs.sanity-checks.outputs.runner }}
+      runner_labels: ${{ needs.sanity-checks.outputs.runner_labels }}
       builder: ${{ needs.sanity-checks.outputs.builder }}
       before_ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
       after_ref: ${{ github.sha }}
@@ -164,7 +165,7 @@ jobs:
       - compile
     uses: ./.github/workflows/run_test_cases.yaml
     with:
-      runner: ${{ needs.sanity-checks.outputs.runner }}
+      runner_labels: ${{ needs.sanity-checks.outputs.runner_labels }}
       builder: ${{ needs.sanity-checks.outputs.builder }}
       ct-matrix: ${{ needs.sanity-checks.outputs.ct-matrix }}
       ct-host: ${{ needs.sanity-checks.outputs.ct-host }}
@@ -176,7 +177,7 @@ jobs:
       - compile
     uses: ./.github/workflows/static_checks.yaml
     with:
-      runner: ${{ needs.sanity-checks.outputs.runner }}
+      runner_labels: ${{ needs.sanity-checks.outputs.runner_labels }}
       builder: ${{ needs.sanity-checks.outputs.builder }}
       ct-matrix: ${{ needs.sanity-checks.outputs.ct-matrix }}
 
@@ -185,7 +186,7 @@ jobs:
       - sanity-checks
     uses: ./.github/workflows/build_slim_packages.yaml
     with:
-      runner: ${{ needs.sanity-checks.outputs.runner }}
+      runner_labels: ${{ needs.sanity-checks.outputs.runner_labels }}
       builder: ${{ needs.sanity-checks.outputs.builder }}
       builder_vsn: ${{ needs.sanity-checks.outputs.builder_vsn }}
       otp_vsn: ${{ needs.sanity-checks.outputs.otp_vsn }}
@@ -196,6 +197,7 @@ jobs:
       - sanity-checks
     uses: ./.github/workflows/build_docker_for_test.yaml
     with:
+      runner_labels: ${{ needs.sanity-checks.outputs.runner_labels }}
       otp_vsn: ${{ needs.sanity-checks.outputs.otp_vsn }}
       elixir_vsn: ${{ needs.sanity-checks.outputs.elixir_vsn }}
       version-emqx: ${{ needs.sanity-checks.outputs.version-emqx }}
@@ -207,7 +209,7 @@ jobs:
       - build_slim_packages
     uses: ./.github/workflows/spellcheck.yaml
     with:
-      runner: ${{ needs.sanity-checks.outputs.runner }}
+      runner_labels: ${{ needs.sanity-checks.outputs.runner_labels }}
 
   run_conf_tests:
     needs:
@@ -215,7 +217,7 @@ jobs:
       - compile
     uses: ./.github/workflows/run_conf_tests.yaml
     with:
-      runner: ${{ needs.sanity-checks.outputs.runner }}
+      runner_labels: ${{ needs.sanity-checks.outputs.runner_labels }}
       builder: ${{ needs.sanity-checks.outputs.builder }}
 
   check_deps_integrity:
@@ -223,7 +225,7 @@ jobs:
       - sanity-checks
     uses: ./.github/workflows/check_deps_integrity.yaml
     with:
-      runner: ${{ needs.sanity-checks.outputs.runner }}
+      runner_labels: ${{ needs.sanity-checks.outputs.runner_labels }}
       builder: ${{ needs.sanity-checks.outputs.builder }}
 
   run_jmeter_tests:
@@ -232,6 +234,7 @@ jobs:
       - build_docker_for_test
     uses: ./.github/workflows/run_jmeter_tests.yaml
     with:
+      runner_labels: ${{ needs.sanity-checks.outputs.runner_labels }}
       version-emqx: ${{ needs.sanity-checks.outputs.version-emqx }}
 
   run_docker_tests:
@@ -240,7 +243,7 @@ jobs:
       - build_docker_for_test
     uses: ./.github/workflows/run_docker_tests.yaml
     with:
-      runner: ${{ needs.sanity-checks.outputs.runner }}
+      runner_labels: ${{ needs.sanity-checks.outputs.runner_labels }}
       version-emqx: ${{ needs.sanity-checks.outputs.version-emqx }}
       version-emqx-enterprise: ${{ needs.sanity-checks.outputs.version-emqx-enterprise }}
 
@@ -250,5 +253,6 @@ jobs:
       - build_docker_for_test
     uses: ./.github/workflows/run_helm_tests.yaml
     with:
+      runner_labels: ${{ needs.sanity-checks.outputs.runner_labels }}
       version-emqx: ${{ needs.sanity-checks.outputs.version-emqx }}
       version-emqx-enterprise: ${{ needs.sanity-checks.outputs.version-emqx-enterprise }}

@@ -92,6 +92,7 @@ groups() ->
             t_sqlparse_foreach_6,
             t_sqlparse_foreach_7,
             t_sqlparse_foreach_8,
+            t_sqlparse_foreach_9,
             t_sqlparse_case_when_1,
             t_sqlparse_case_when_2,
             t_sqlparse_case_when_3,
@@ -151,7 +152,7 @@ init_per_suite(Config) ->
     emqx_rule_funcs_demo:module_info(),
     application:load(emqx_conf),
     ok = emqx_common_test_helpers:start_apps(
-        [emqx_conf, emqx_rule_engine, emqx_authz, emqx_bridge],
+        [emqx_conf, emqx_rule_engine, emqx_auth, emqx_bridge],
         fun set_special_configs/1
     ),
     Config.
@@ -160,7 +161,7 @@ end_per_suite(_Config) ->
     emqx_common_test_helpers:stop_apps([emqx_conf, emqx_rule_engine]),
     ok.
 
-set_special_configs(emqx_authz) ->
+set_special_configs(emqx_auth) ->
     {ok, _} = emqx:update_config(
         [authorization],
         #{
@@ -2450,6 +2451,53 @@ t_sqlparse_foreach_8(_Config) ->
         )
      || SqlN <- [Sql3]
     ].
+
+t_sqlparse_foreach_9(_Config) ->
+    Sql1 =
+        "foreach json_decode(payload) as p "
+        "do p.ts as ts "
+        "from \"t/#\" ",
+    Context = #{
+        payload =>
+            emqx_utils_json:encode(
+                [
+                    #{
+                        <<"ts">> => 1451649600512,
+                        <<"values">> =>
+                            #{
+                                <<"respiratoryrate">> => 20,
+                                <<"heartrate">> => 130,
+                                <<"systolic">> => 50
+                            }
+                    }
+                ]
+            ),
+        topic => <<"t/a">>
+    },
+    ?assertMatch(
+        {ok, [#{<<"ts">> := 1451649600512}]},
+        emqx_rule_sqltester:test(
+            #{
+                sql => Sql1,
+                context => Context
+            }
+        )
+    ),
+    %% doesn't work if we don't decode it first
+    Sql2 =
+        "foreach payload as p "
+        "do p.ts as ts "
+        "from \"t/#\" ",
+    ?assertMatch(
+        {ok, []},
+        emqx_rule_sqltester:test(
+            #{
+                sql => Sql2,
+                context => Context
+            }
+        )
+    ),
+    ok.
 
 t_sqlparse_case_when_1(_Config) ->
     %% case-when-else clause

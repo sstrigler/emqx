@@ -1,5 +1,17 @@
 %%--------------------------------------------------------------------
 %% Copyright (c) 2023 EMQ Technologies Co., Ltd. All Rights Reserved.
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
 %%--------------------------------------------------------------------
 
 -module(emqx_ldap).
@@ -74,7 +86,7 @@ fields(config) ->
         {request_timeout,
             ?HOCON(emqx_schema:timeout_duration_ms(), #{
                 desc => ?DESC(request_timeout),
-                default => <<"5s">>
+                default => <<"10s">>
             })},
         {ssl,
             ?HOCON(?R_REF(?MODULE, ssl), #{
@@ -158,7 +170,7 @@ on_start(
         {error, Reason} ->
             ?tp(
                 ldap_connector_start_failed,
-                #{error => Reason}
+                #{error => emqx_utils:redact(Reason)}
             ),
             {error, Reason}
     end.
@@ -177,7 +189,7 @@ on_query(InstId, {query, Data, Attrs}, State) ->
     on_query(InstId, {query, Data}, [{attributes, Attrs}], State);
 on_query(InstId, {query, Data, Attrs, Timeout}, State) ->
     on_query(InstId, {query, Data}, [{attributes, Attrs}, {timeout, Timeout}], State);
-on_query(InstId, {bind, _Data} = Req, State) ->
+on_query(InstId, {bind, _DN, _Data} = Req, State) ->
     emqx_ldap_bind_worker:on_query(InstId, Req, State).
 
 on_get_status(_InstId, #{pool_name := PoolName} = _State) ->
@@ -226,7 +238,9 @@ on_query(
     #{base_tokens := BaseTks, filter_tokens := FilterTks} = State
 ) ->
     Base = emqx_placeholder:proc_tmpl(BaseTks, Data),
-    FilterBin = emqx_placeholder:proc_tmpl(FilterTks, Data),
+    FilterBin = emqx_placeholder:proc_tmpl(FilterTks, Data, #{
+        return => full_binary, var_trans => fun filter_escape/1
+    }),
     case emqx_ldap_filter_parser:scan_and_parse(FilterBin) of
         {ok, Filter} ->
             do_ldap_query(
@@ -248,8 +262,8 @@ do_ldap_query(
     SearchOptions,
     #{pool_name := PoolName} = State
 ) ->
-    LogMeta = #{connector => InstId, search => SearchOptions, state => State},
-    ?TRACE("QUERY", "ldap_connector_received", LogMeta),
+    LogMeta = #{connector => InstId, search => SearchOptions, state => emqx_utils:redact(State)},
+    ?TRACE("QUERY", "ldap_connector_received_query", LogMeta),
     case
         ecpool:pick_and_do(
             PoolName,
@@ -262,13 +276,36 @@ do_ldap_query(
                 ldap_connector_query_return,
                 #{result => Result}
             ),
-            {ok, Result#eldap_search_result.entries};
+            Entries = Result#eldap_search_result.entries,
+            Count = length(Entries),
+            case Count =< 1 of
+                true ->
+                    {ok, Entries};
+                false ->
+                    %% Accept only a single exact match.
+                    %% Multiple matches likely indicate:
+                    %% 1. A misconfiguration in EMQX, allowing overly broad query conditions.
+                    %% 2. Indistinguishable entries in the LDAP database.
+                    %% Neither scenario should be allowed to proceed.
+                    Msg = "ldap_query_found_more_than_one_match",
+                    ?SLOG(
+                        error,
+                        LogMeta#{
+                            msg => "ldap_query_found_more_than_one_match",
+                            count => Count
+                        }
+                    ),
+                    {error, {unrecoverable_error, Msg}}
+            end;
         {error, 'noSuchObject'} ->
             {ok, []};
         {error, Reason} ->
             ?SLOG(
                 error,
-                LogMeta#{msg => "ldap_connector_do_query_failed", reason => Reason}
+                LogMeta#{
+                    msg => "ldap_connector_do_query_failed",
+                    reason => emqx_utils:redact(Reason)
+                }
             ),
             {error, {unrecoverable_error, Reason}}
     end.
@@ -291,3 +328,18 @@ do_prepare_template([{filter, V} | T], State) ->
     do_prepare_template(T, State#{filter_tokens => emqx_placeholder:preproc_tmpl(V)});
 do_prepare_template([], State) ->
     State.
+
+filter_escape(Binary) when is_binary(Binary) ->
+    filter_escape(erlang:binary_to_list(Binary));
+filter_escape([Char | T]) ->
+    case lists:member(Char, filter_special_chars()) of
+        true ->
+            [$\\, Char | filter_escape(T)];
+        _ ->
+            [Char | filter_escape(T)]
+    end;
+filter_escape([]) ->
+    [].
+
+filter_special_chars() ->
+    [$(, $), $&, $|, $=, $!, $~, $>, $<, $:, $*, $\t, $\n, $\r, $\\].

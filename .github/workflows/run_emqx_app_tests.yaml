@@ -10,7 +10,7 @@ concurrency:
 on:
   workflow_call:
     inputs:
-      runner:
+      runner_labels:
         required: true
         type: string
       builder:
@@ -26,9 +26,12 @@ on:
 env:
   IS_CI: "yes"
 
+permissions:
+  contents: read
+
 jobs:
   run_emqx_app_tests:
-    runs-on: ${{ inputs.runner }}
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
     container: ${{ inputs.builder }}
 
     defaults:
@@ -55,11 +58,11 @@ jobs:
         cd apps/emqx
         ./rebar3 xref
         ./rebar3 dialyzer
-        ./rebar3 eunit -v
+        ./rebar3 eunit -v --name 'eunit@127.0.0.1'
         ./rebar3 as standalone_test ct --name 'test@127.0.0.1' -v --readable=true
         ./rebar3 proper -d test/props
     - uses: actions/upload-artifact@v3
       if: failure()
       with:
-        name: logs-${{ inputs.runner }}
+        name: logs-emqx-app-tests
         path: apps/emqx/_build/test/logs

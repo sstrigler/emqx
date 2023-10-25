@@ -61,7 +61,9 @@
     diff_lists/3,
     merge_lists/3,
     tcp_keepalive_opts/4,
-    format/1
+    format/1,
+    format_mfal/1,
+    call_first_defined/1
 ]).
 
 -export([
@@ -529,6 +531,46 @@ tcp_keepalive_opts(OS, _Idle, _Interval, _Probes) ->
 format(Term) ->
     iolist_to_binary(io_lib:format("~0p", [Term])).
 
+%% @doc Helper function for log formatters.
+-spec format_mfal(map()) -> undefined | binary().
+format_mfal(Data) ->
+    Line =
+        case maps:get(line, Data, undefined) of
+            undefined ->
+                <<"">>;
+            Num ->
+                ["(", integer_to_list(Num), ")"]
+        end,
+    case maps:get(mfa, Data, undefined) of
+        {M, F, A} ->
+            iolist_to_binary([
+                atom_to_binary(M, utf8),
+                $:,
+                atom_to_binary(F, utf8),
+                $/,
+                integer_to_binary(A),
+                Line
+            ]);
+        _ ->
+            undefined
+    end.
+
+-spec call_first_defined(list({module(), atom(), list()})) -> term() | no_return().
+call_first_defined([{Module, Function, Args} | Rest]) ->
+    try
+        apply(Module, Function, Args)
+    catch
+        error:undef:Stacktrace ->
+            case Stacktrace of
+                [{Module, Function, _, _} | _] ->
+                    call_first_defined(Rest);
+                _ ->
+                    erlang:raise(error, undef, Stacktrace)
+            end
+    end;
+call_first_defined([]) ->
+    error(none_fun_is_defined).
+
 %%------------------------------------------------------------------------------
 %% Internal Functions
 %%------------------------------------------------------------------------------
@@ -620,6 +662,7 @@ try_to_existing_atom(Convert, Data, Encoding) ->
         _:Reason -> {error, Reason}
     end.
 
+%% NOTE: keep alphabetical order
 is_sensitive_key(aws_secret_access_key) -> true;
 is_sensitive_key("aws_secret_access_key") -> true;
 is_sensitive_key(<<"aws_secret_access_key">>) -> true;
@@ -641,6 +684,8 @@ is_sensitive_key(<<"secret_key">>) -> true;
 is_sensitive_key(security_token) -> true;
 is_sensitive_key("security_token") -> true;
 is_sensitive_key(<<"security_token">>) -> true;
+is_sensitive_key(sp_private_key) -> true;
+is_sensitive_key(<<"sp_private_key">>) -> true;
 is_sensitive_key(token) -> true;
 is_sensitive_key("token") -> true;
 is_sensitive_key(<<"token">>) -> true;

@@ -39,7 +39,7 @@ bcrypt() ->
     {bcrypt, {git, "https://github.com/emqx/erlang-bcrypt.git", {tag, "0.6.1"}}}.
 
 quicer() ->
-    {quicer, {git, "https://github.com/emqx/quic.git", {tag, "0.0.200"}}}.
+    {quicer, {git, "https://github.com/emqx/quic.git", {tag, "0.0.202"}}}.
 
 jq() ->
     {jq, {git, "https://github.com/emqx/jq", {tag, "v0.3.10"}}}.
@@ -107,7 +107,6 @@ is_community_umbrella_app("apps/emqx_schema_registry") -> false;
 is_community_umbrella_app("apps/emqx_enterprise") -> false;
 is_community_umbrella_app("apps/emqx_bridge_kinesis") -> false;
 is_community_umbrella_app("apps/emqx_bridge_azure_event_hub") -> false;
-is_community_umbrella_app("apps/emqx_ldap") -> false;
 is_community_umbrella_app("apps/emqx_gcp_device") -> false;
 is_community_umbrella_app("apps/emqx_dashboard_rbac") -> false;
 is_community_umbrella_app("apps/emqx_dashboard_sso") -> false;
@@ -163,11 +162,7 @@ project_app_dirs(Edition) ->
      || Path <- filelib:wildcard("apps/*"),
         is_community_umbrella_app(Path) orelse IsEnterprise
     ],
-    UmbrellaApps ++
-        case IsEnterprise of
-            true -> ["lib-ee/*"];
-            false -> []
-        end.
+    UmbrellaApps.
 
 plugins() ->
     [
@@ -455,7 +450,7 @@ relx_overlay(ReleaseType, Edition) ->
         {copy, "bin/emqx_ctl", "bin/emqx_ctl-{{release_version}}"},
         {copy, "bin/install_upgrade.escript", "bin/install_upgrade.escript-{{release_version}}"},
         {copy, "apps/emqx_gateway_lwm2m/lwm2m_xml", "etc/lwm2m_xml"},
-        {copy, "apps/emqx_authz/etc/acl.conf", "etc/acl.conf"},
+        {copy, "apps/emqx_auth/etc/acl.conf", "etc/acl.conf"},
         {template, "bin/emqx.cmd", "bin/emqx.cmd"},
         {template, "bin/emqx_ctl.cmd", "bin/emqx_ctl.cmd"},
         {copy, "bin/nodetool", "bin/nodetool"},
@@ -538,8 +533,7 @@ provide_bcrypt_release(ReleaseType) ->
 
 erl_opts_i() ->
     [{i, "apps"}] ++
-        [{i, Dir} || Dir <- filelib:wildcard(filename:join(["apps", "*", "include"]))] ++
-        [{i, Dir} || Dir <- filelib:wildcard(filename:join(["lib-ee", "*", "include"]))].
+        [{i, Dir} || Dir <- filelib:wildcard(filename:join(["apps", "*", "include"]))].
 
 dialyzer(Config) ->
     {dialyzer, OldDialyzerConfig} = lists:keyfind(dialyzer, 1, Config),
@@ -596,7 +590,7 @@ coveralls() ->
             []
     end.
 
-app_names() -> list_dir("apps") ++ list_dir("lib-ee").
+app_names() -> list_dir("apps").
 
 list_dir(Dir) ->
     case filelib:is_dir(Dir) of
